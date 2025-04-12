@@ -1,0 +1,259 @@
+/* Responsive CSS */
+
+/* Base responsive setup */
+* {
+    box-sizing: border-box;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Media Queries */
+
+/* Large Devices (desktops, less than 1200px) */
+@media (max-width: 1199.98px) {
+    .container {
+        max-width: 960px;
+    }
+    
+    .side-navigation {
+        width: 220px;
+    }
+    
+    .content-container {
+        margin-left: 220px;
+    }
+}
+
+/* Medium Devices (tablets, less than 992px) */
+@media (max-width: 991.98px) {
+    .container {
+        max-width: 720px;
+    }
+    
+    /* Mobile navigation already handled in navigation.css */
+    
+    /* Adjust dashboard grid */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Adjust stats grid */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Page header adjustments */
+    .page-header {
+        padding: 40px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 2rem;
+    }
+}
+
+/* Small Devices (landscape phones, less than 768px) */
+@media (max-width: 767.98px) {
+    .container {
+        max-width: 540px;
+    }
+    
+    /* Form adjustments */
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-buttons {
+        flex-direction: column;
+    }
+    
+    .form-buttons .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    /* Profile completion card */
+    .profile-completion-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .profile-icon {
+        margin-bottom: 10px;
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Calendar adjustments */
+    .calendar-day {
+        padding: 2px;
+    }
+    
+    .calendar-day-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.8rem;
+    }
+    
+    /* Appointment list */
+    .appointment-item {
+        flex-wrap: wrap;
+    }
+    
+    .appointment-actions {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
+}
+
+/* Extra Small Devices (portrait phones, less than 576px) */
+@media (max-width: 575.98px) {
+    .container {
+        width: 100%;
+        padding: 0 15px;
+    }
+    
+    /* Page header */
+    .page-header {
+        padding: 30px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    /* Section padding */
+    .section {
+        padding: 40px 0;
+    }
+    
+    /* Dashboard header */
+    .dashboard-header {
+        flex-direction: column;
+    }
+    
+    /* Card padding */
+    .card, .dashboard-card, .form-container {
+        padding: 15px;
+    }
+    
+    /* Form card */
+    .form-card {
+        padding: 20px 15px;
+    }
+    
+    /* Table layout */
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+    
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    tr {
+        margin-bottom: 15px;
+        border: 1px solid #f0f0f0;
+        border-radius: var(--border-radius);
+    }
+    
+    td {
+        position: relative;
+        padding-left: 50% !important;
+        border: none !important;
+        border-bottom: 1px solid #f0f0f0 !important;
+    }
+    
+    td:last-child {
+        border-bottom: none !important;
+    }
+    
+    td:before {
+        position: absolute;
+        top: 15px;
+        left: 10px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: 500;
+        color: var(--color-burgundy);
+    }
+    
+    /* Custom responsive styles for specific table cells */
+    td:nth-of-type(1):before { content: "Client"; }
+    td:nth-of-type(2):before { content: "Type"; }
+    td:nth-of-type(3):before { content: "Date"; }
+    td:nth-of-type(4):before { content: "Status"; }
+    td:nth-of-type(5):before { content: "Actions"; }
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background-color: white;
+        font-size: 12pt;
+    }
+    
+    .side-navigation,
+    #mobile-menu-toggle,
+    .navigation,
+    .footer,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+    
+    .content-container {
+        margin-left: 0;
+        padding: 0;
+    }
+    
+    .dashboard-card,
+    .card,
+    .form-container {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .page-header {
+        background: none !important;
+        color: black;
+        padding: 20px 0;
+    }
+    
+    .page-header h1,
+    .page-header p {
+        color: black;
+    }
+    
+    a {
+        text-decoration: none;
+        color: black;
+    }
+    
+    /* Expand widths */
+    .container,
+    .content-container,
+    .dashboard-grid,
+    .stats-grid {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Force backgrounds for badge status */
+    .badge {
+        border: 1px solid #ddd;
+        background: none !important;
+        color: black !important;
+    }
+} 

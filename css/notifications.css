@@ -1,0 +1,121 @@
+/* Notifications Container */
+.notifications-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    max-width: 350px;
+}
+
+/* Individual Notification */
+.notification {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    width: 100%;
+    transform: translateX(120%);
+    transition: transform 0.3s ease-out;
+    opacity: 0;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-content {
+    display: flex;
+    padding: 15px;
+    align-items: center;
+    border-left: 4px solid transparent;
+}
+
+.notification-message {
+    flex-grow: 1;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--color-dark);
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0 0 10px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.notification-close:hover {
+    color: #666;
+}
+
+/* Notification Types */
+.notification-success .notification-content {
+    border-left-color: var(--color-success);
+}
+
+.notification-success::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    background-color: var(--color-success);
+}
+
+.notification-error .notification-content {
+    border-left-color: var(--color-error);
+}
+
+.notification-error::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    background-color: var(--color-error);
+}
+
+.notification-warning .notification-content {
+    border-left-color: var(--color-warning);
+}
+
+.notification-warning::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    background-color: var(--color-warning);
+}
+
+.notification-info .notification-content {
+    border-left-color: var(--color-info);
+}
+
+.notification-info::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    background-color: var(--color-info);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .notifications-container {
+        left: 20px;
+        right: 20px;
+        top: auto;
+        bottom: 20px;
+        align-items: stretch;
+    }
+} 

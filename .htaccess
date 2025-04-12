@@ -1,0 +1,26 @@
+# Prevent directory listing
+Options -Indexes
+
+# Protect direct access to PHP files except index.php, login, and register
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^([^/]+)/?$ $1.php [L]
+
+# Only allow access to specific files
+<FilesMatch "^(index\.php|consultant-login\.php|consultant-register\.php|consultant-dashboard\.php|consultant-bookings\.php|consultant-profile\.php)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Deny access to all other files
+<FilesMatch "^(?!(index\.php|consultant-login\.php|consultant-register\.php|consultant-dashboard\.php|consultant-bookings\.php|consultant-profile\.php)$).*$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Protect sensitive files
+<FilesMatch "^(\.htaccess|\.htpasswd|\.git)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch> 
