@@ -157,24 +157,55 @@ $consultation_types = [
 
 <style>
 /* Toggle switch styling */
-.switch input:checked + .slider {
-    background-color: var(--color-burgundy);
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
 }
 
-.switch input:checked + .slider:before {
-    transform: translateX(26px);
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
 }
 
 .switch .slider:before {
     position: absolute;
     content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
     background-color: white;
     transition: .4s;
     border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.switch input:checked + .slider {
+    background-color: var(--color-burgundy);
+}
+
+.switch input:focus + .slider {
+    box-shadow: 0 0 1px var(--color-burgundy);
+}
+
+.switch input:checked + .slider:before {
+    transform: translateX(26px);
 }
 
 /* Time slot toggle switch styling */
@@ -202,6 +233,7 @@ $consultation_types = [
     background-color: #ccc;
     transition: .4s;
     border-radius: 24px;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2);
 }
 
 .time-slot-switch .slider:before {
@@ -214,6 +246,7 @@ $consultation_types = [
     background-color: white;
     transition: .4s;
     border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .time-slot-switch input:checked + .slider {
@@ -326,96 +359,92 @@ $consultation_types = [
                 </div>
             </div>
             
-            <form action="" method="POST">
-                <input type="hidden" name="selected_date" value="<?php echo $selected_date; ?>">
-                <input type="hidden" name="selected_day" value="<?php echo $selected_day; ?>">
+            <!-- Time Slots Selection -->
+            <div style="margin-bottom: 30px;">
+                <h3 style="font-size: 1.1rem; margin: 0 0 15px; color: var(--color-dark);">Select Available Time Slots</h3>
                 
-                <!-- Time Slots Selection -->
-                <div style="margin-bottom: 30px;">
-                    <h3 style="font-size: 1.1rem; margin: 0 0 15px; color: var(--color-dark);">Select Available Time Slots</h3>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
-                        <?php foreach ($time_slots as $slot): ?>
-                            <?php
-                            // Determine if this is a valid slot for scheduling (not in the past for today)
-                            $slot_datetime = new DateTime($selected_date . ' ' . $slot['start']);
-                            $now = new DateTime();
-                            $is_past = $selected_date == $now->format('Y-m-d') && $slot_datetime < $now;
-                            ?>
-                            
-                            <div class="time-slot-card" style="<?php echo $is_past ? 'opacity: 0.5;' : ''; ?>">
-                                <div style="font-weight: 500; margin-bottom: 12px; font-size: 1.05rem; border-bottom: 1px solid #eee; padding-bottom: 8px;">
-                                    <?php echo date('g:i A', strtotime($slot['start'])); ?> - <?php echo date('g:i A', strtotime($slot['end'])); ?>
-                                </div>
-                                
-                                <div style="display: flex; flex-direction: column; gap: 10px;">
-                                    <?php 
-                                    // Loop through all consultation types regardless of day availability
-                                    $all_types = [
-                                        'Video Consultation' => ['available' => $video_available, 'fee' => $consultant['video_consultation_fee']],
-                                        'Phone Consultation' => ['available' => $phone_available, 'fee' => $consultant['phone_consultation_fee']],
-                                        'In-Person Consultation' => ['available' => $in_person_available, 'fee' => $consultant['in_person_consultation_fee']]
-                                    ];
-                                    
-                                    foreach ($all_types as $type => $settings): 
-                                        $slot_key = $slot['start'] . '|' . $slot['end'] . '|' . $type;
-                                        $is_scheduled = isset($schedule_slots[$slot_key]);
-                                        
-                                        // Check if this slot is booked
-                                        $is_booked = false;
-                                        foreach ($booked_slots as $booked_key => $booked) {
-                                            list($booked_start, $booked_end, $booked_type) = explode('|', $booked_key);
-                                            if ($slot['start'] === $booked_start && $type === $booked_type) {
-                                                $is_booked = true;
-                                                break;
-                                            }
-                                        }
-                                        
-                                        // Determine styles based on status
-                                        $checkbox_disabled = $is_past || $is_booked || !$settings['available'];
-                                        $disabled_reason = '';
-                                        
-                                        if ($is_past) {
-                                            $disabled_reason = 'Past time';
-                                        } elseif ($is_booked) {
-                                            $disabled_reason = 'Booked';
-                                        } elseif (!$settings['available']) {
-                                            $disabled_reason = 'Disabled for ' . ucfirst($selected_day);
-                                        }
-                                    ?>
-                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; <?php echo $checkbox_disabled ? 'opacity: 0.7;' : ''; ?>">
-                                            <div style="font-size: 0.9rem;">
-                                                <div><?php echo $type; ?></div>
-                                                <div style="font-size: 0.8rem; color: #666;">Fee: $<?php echo number_format($settings['fee'], 2); ?></div>
-                                                <?php if ($checkbox_disabled && $disabled_reason): ?>
-                                                    <div style="font-size: 0.8rem; color: #f44336;"><?php echo $disabled_reason; ?></div>
-                                                <?php endif; ?>
-                                            </div>
-                                            
-                                            <label class="time-slot-switch">
-                                                <input 
-                                                    type="checkbox" 
-                                                    name="time_slots[]" 
-                                                    value="<?php echo $slot_key; ?>" 
-                                                    <?php echo $is_scheduled ? 'checked' : ''; ?> 
-                                                    <?php echo $checkbox_disabled ? 'disabled' : ''; ?>
-                                                >
-                                                <span class="slider"></span>
-                                            </label>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
+                <div id="time-slots-status" style="margin-bottom: 15px; text-align: right; height: 30px;">
+                    <!-- Status messages will appear here -->
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                    <?php foreach ($time_slots as $slot): ?>
+                        <?php
+                        // Determine if this is a valid slot for scheduling (not in the past for today)
+                        $slot_datetime = new DateTime($selected_date . ' ' . $slot['start']);
+                        $now = new DateTime();
+                        $is_past = $selected_date == $now->format('Y-m-d') && $slot_datetime < $now;
+                        ?>
+                        
+                        <div class="time-slot-card" style="<?php echo $is_past ? 'opacity: 0.5;' : ''; ?>">
+                            <div style="font-weight: 500; margin-bottom: 12px; font-size: 1.05rem; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                                <?php echo date('g:i A', strtotime($slot['start'])); ?> - <?php echo date('g:i A', strtotime($slot['end'])); ?>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <?php 
+                                // Loop through all consultation types regardless of day availability
+                                $all_types = [
+                                    'Video Consultation' => ['available' => $video_available, 'fee' => $consultant['video_consultation_fee']],
+                                    'Phone Consultation' => ['available' => $phone_available, 'fee' => $consultant['phone_consultation_fee']],
+                                    'In-Person Consultation' => ['available' => $in_person_available, 'fee' => $consultant['in_person_consultation_fee']]
+                                ];
+                                
+                                foreach ($all_types as $type => $settings): 
+                                    $slot_key = $slot['start'] . '|' . $slot['end'] . '|' . $type;
+                                    $is_scheduled = isset($schedule_slots[$slot_key]);
+                                    
+                                    // Check if this slot is booked
+                                    $is_booked = false;
+                                    foreach ($booked_slots as $booked_key => $booked) {
+                                        list($booked_start, $booked_end, $booked_type) = explode('|', $booked_key);
+                                        if ($slot['start'] === $booked_start && $type === $booked_type) {
+                                            $is_booked = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // Determine styles based on status
+                                    $checkbox_disabled = $is_past || $is_booked || !$settings['available'];
+                                    $disabled_reason = '';
+                                    
+                                    if ($is_past) {
+                                        $disabled_reason = 'Past time';
+                                    } elseif ($is_booked) {
+                                        $disabled_reason = 'Booked';
+                                    } elseif (!$settings['available']) {
+                                        $disabled_reason = 'Disabled for ' . ucfirst($selected_day);
+                                    }
+                                ?>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; <?php echo $checkbox_disabled ? 'opacity: 0.7;' : ''; ?>">
+                                        <div style="font-size: 0.9rem;">
+                                            <div><?php echo $type; ?></div>
+                                            <div style="font-size: 0.8rem; color: #666;">Fee: $<?php echo number_format($settings['fee'], 2); ?></div>
+                                            <?php if ($checkbox_disabled && $disabled_reason): ?>
+                                                <div style="font-size: 0.8rem; color: #f44336;"><?php echo $disabled_reason; ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                        
+                                        <label class="time-slot-switch">
+                                            <input 
+                                                type="checkbox" 
+                                                class="time-slot-toggle"
+                                                data-start="<?php echo $slot['start']; ?>"
+                                                data-end="<?php echo $slot['end']; ?>"
+                                                data-type="<?php echo $type; ?>"
+                                                value="<?php echo $slot_key; ?>" 
+                                                <?php echo $is_scheduled ? 'checked' : ''; ?> 
+                                                <?php echo $checkbox_disabled ? 'disabled' : ''; ?>
+                                            >
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-                
-                <div style="text-align: right;">
-                    <button type="submit" name="update_schedule" style="padding: 12px 25px; background-color: var(--color-burgundy); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 500;">
-                        <i class="fas fa-save"></i> Save Schedule
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
         
         <!-- Calendar View -->
@@ -429,6 +458,248 @@ $consultation_types = [
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Toggle switches auto-save functionality
+    const toggleSwitches = document.querySelectorAll('.auto-save-toggle');
+    const statusDiv = document.getElementById('toggle-save-status');
+    
+    toggleSwitches.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const consultationType = this.getAttribute('data-type');
+            const isChecked = this.checked ? 1 : 0;
+            const selectedDay = '<?php echo $selected_day; ?>';
+            
+            // Show loading status
+            statusDiv.innerHTML = '<div style="color: #666;"><i class="fas fa-spinner fa-spin"></i> Saving changes...</div>';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('selected_day', selectedDay);
+            formData.append('update_consultation_types', '1');
+            
+            // Add specific consultation type
+            if (consultationType === 'video') {
+                formData.append('video_available', isChecked);
+                formData.append('phone_available', document.querySelector('[name="phone_available"]').checked ? 1 : 0);
+                formData.append('in_person_available', document.querySelector('[name="in_person_available"]').checked ? 1 : 0);
+            } else if (consultationType === 'phone') {
+                formData.append('video_available', document.querySelector('[name="video_available"]').checked ? 1 : 0);
+                formData.append('phone_available', isChecked);
+                formData.append('in_person_available', document.querySelector('[name="in_person_available"]').checked ? 1 : 0);
+            } else if (consultationType === 'in_person') {
+                formData.append('video_available', document.querySelector('[name="video_available"]').checked ? 1 : 0);
+                formData.append('phone_available', document.querySelector('[name="phone_available"]').checked ? 1 : 0);
+                formData.append('in_person_available', isChecked);
+            }
+            
+            // Send AJAX request
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Show success message
+                    statusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> Changes saved</div>';
+                    
+                    // Update the time slots in real-time
+                    updateTimeSlots(consultationType, isChecked);
+                    
+                    // Provide reload option for complete refresh
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> Changes saved. <a href="javascript:void(0)" id="reload-page" style="color: #0066cc; text-decoration: underline;">Refresh page</a> if changes are not visible.</div>';
+                        
+                        // Add event listener to the reload link
+                        document.getElementById('reload-page').addEventListener('click', function() {
+                            window.location.reload();
+                        });
+                    }, 2000);
+                } else {
+                    // Show error message
+                    statusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to save changes</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to save changes</div>';
+            });
+        });
+    });
+
+    // Time slot toggles auto-save functionality
+    const timeSlotToggles = document.querySelectorAll('.time-slot-toggle');
+    const timeSlotStatusDiv = document.getElementById('time-slots-status');
+    
+    // Debounce function to reduce number of server requests
+    let timeoutId;
+    const debounce = (func, delay) => {
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(null, args);
+            }, delay);
+        };
+    };
+    
+    // Track changes to send in batch
+    let pendingChanges = [];
+    
+    timeSlotToggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const startTime = this.getAttribute('data-start');
+            const endTime = this.getAttribute('data-end');
+            const slotType = this.getAttribute('data-type');
+            const isChecked = this.checked;
+            
+            // Add to pending changes
+            pendingChanges.push({
+                start: startTime,
+                end: endTime,
+                type: slotType,
+                checked: isChecked
+            });
+            
+            // Show loading status
+            timeSlotStatusDiv.innerHTML = '<div style="color: #666;"><i class="fas fa-spinner fa-spin"></i> Saving changes...</div>';
+            
+            // Debounce the save operation
+            debounceTimeSlotSave();
+        });
+    });
+    
+    // Debounced save function
+    const debounceTimeSlotSave = debounce(() => {
+        saveTimeSlots();
+    }, 500);
+    
+    // Function to save time slots
+    function saveTimeSlots() {
+        if (pendingChanges.length === 0) return;
+        
+        const selectedDay = '<?php echo $selected_day; ?>';
+        const selectedDate = '<?php echo $selected_date; ?>';
+        
+        // Create form data for AJAX request
+        const formData = new FormData();
+        formData.append('time_slots_ajax', JSON.stringify(pendingChanges));
+        formData.append('selected_day', selectedDay);
+        formData.append('selected_date', selectedDate);
+        
+        // Send AJAX request
+        fetch('ajax-save-timeslots.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                // Show success message
+                timeSlotStatusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> Time slots updated</div>';
+                
+                // Clear pending changes
+                pendingChanges = [];
+                
+                // Clear message after 3 seconds
+                setTimeout(() => {
+                    timeSlotStatusDiv.innerHTML = '';
+                }, 3000);
+            } else {
+                // Show error message
+                timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to update time slots</div>';
+                
+                // Show reload option
+                setTimeout(() => {
+                    timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to update time slots. <a href="javascript:void(0)" id="reload-page-slots" style="color: #0066cc; text-decoration: underline;">Please refresh the page</a> and try again.</div>';
+                    
+                    document.getElementById('reload-page-slots')?.addEventListener('click', function() {
+                        window.location.reload();
+                    });
+                }, 3000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to update time slots</div>';
+        });
+    }
+
+    // Function to update time slots based on consultation type availability
+    function updateTimeSlots(consultationType, isAvailable) {
+        // Map data-type attribute values to their corresponding time slot types
+        const typeMapping = {
+            'video': 'Video Consultation',
+            'phone': 'Phone Consultation',
+            'in_person': 'In-Person Consultation'
+        };
+        
+        // Get the consultation type string for the time slots
+        const slotTypeString = typeMapping[consultationType];
+        
+        if (!slotTypeString) return;
+        
+        // Query all time slot checkboxes that contain our consultation type
+        document.querySelectorAll('.time-slot-card').forEach(card => {
+            // Get all checkboxes and their container divs
+            const slots = card.querySelectorAll('input[type="checkbox"][value*="' + slotTypeString + '"]');
+            
+            slots.forEach(checkbox => {
+                const slotContainer = checkbox.closest('div[style*="display: flex"]');
+                
+                if (slotContainer) {
+                    // Check if this is a past time slot (parent card has opacity 0.5)
+                    const isPast = card.style.opacity === '0.5';
+                    
+                    // Check if this slot is already booked
+                    const disabledDiv = slotContainer.querySelector('div[style*="color: #f44336"]');
+                    const isBooked = disabledDiv && disabledDiv.textContent === 'Booked';
+                    
+                    if (!isAvailable) {
+                        // Disable the slot if consultation type is toggled off
+                        checkbox.disabled = true;
+                        slotContainer.style.opacity = '0.7';
+                        
+                        // Add or update the disabled reason text
+                        const infoDiv = slotContainer.querySelector('div:first-child');
+                        
+                        if (infoDiv) {
+                            // Check for existing reason div
+                            let reasonDiv = Array.from(infoDiv.children).find(child => 
+                                child.classList && child.classList.contains('disabled-reason')
+                            );
+                            
+                            if (!reasonDiv) {
+                                // Create disabled reason div
+                                reasonDiv = document.createElement('div');
+                                reasonDiv.classList.add('disabled-reason');
+                                reasonDiv.style.fontSize = '0.8rem';
+                                reasonDiv.style.color = '#f44336';
+                                infoDiv.appendChild(reasonDiv);
+                            }
+                            
+                            reasonDiv.textContent = 'Disabled for <?php echo ucfirst($selected_day); ?>';
+                        }
+                    } else if (!isPast && !isBooked) {
+                        // Enable the checkbox if:
+                        // 1. Consultation type is enabled
+                        // 2. It's not a past time slot
+                        // 3. It's not already booked
+                        checkbox.disabled = false;
+                        slotContainer.style.opacity = '';
+                        
+                        // Remove the "Disabled for X day" message if it exists
+                        const infoDiv = slotContainer.querySelector('div:first-child');
+                        if (infoDiv) {
+                            const reasonDivs = infoDiv.querySelectorAll('.disabled-reason');
+                            reasonDivs.forEach(div => {
+                                if (div.textContent === 'Disabled for <?php echo ucfirst($selected_day); ?>') {
+                                    div.remove();
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        });
+    }
+
     // Simple weekly calendar implementation
     const calendarContainer = document.getElementById('schedule-calendar');
     
