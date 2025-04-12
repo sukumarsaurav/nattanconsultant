@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_schedule'])) {
     
     try {
         // First, delete existing slots for the selected day of week
-        $delete_query = "DELETE FROM availability_schedule WHERE admin_user_id = ? AND day_of_week = ?";
+        $delete_query = "DELETE FROM availability_schedule WHERE consultant_id = ? AND day_of_week = ?";
         executeQuery($delete_query, [$consultant_id, $selected_day]);
         
         // Then, insert new slots if any are selected
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_schedule'])) {
             foreach ($_POST['time_slots'] as $slot) {
                 list($start_time, $end_time, $consultation_type) = explode('|', $slot);
                 
-                $insert_query = "INSERT INTO availability_schedule (admin_user_id, day_of_week, start_time, end_time, is_available) 
+                $insert_query = "INSERT INTO availability_schedule (consultant_id, day_of_week, start_time, end_time, is_available) 
                                VALUES (?, ?, ?, ?, 1)";
                 executeQuery($insert_query, [
                     $consultant_id, 
@@ -62,7 +62,7 @@ $prev_date = (clone $current_date)->modify('-1 day')->format('Y-m-d');
 $next_date = (clone $current_date)->modify('+1 day')->format('Y-m-d');
 
 // Get existing schedule for selected day of week
-$schedule_query = "SELECT * FROM availability_schedule WHERE admin_user_id = ? AND day_of_week = ? ORDER BY start_time";
+$schedule_query = "SELECT * FROM availability_schedule WHERE consultant_id = ? AND day_of_week = ? ORDER BY start_time";
 $schedule_result = executeQuery($schedule_query, [$consultant_id, $selected_day]);
 $schedule_slots = [];
 
@@ -590,34 +590,52 @@ document.addEventListener('DOMContentLoaded', function() {
             body: formData
         })
         .then(response => {
-            if (response.ok) {
-                // Show success message
-                timeSlotStatusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> Time slots updated</div>';
-                
-                // Clear pending changes
-                pendingChanges = [];
-                
-                // Clear message after 3 seconds
-                setTimeout(() => {
-                    timeSlotStatusDiv.innerHTML = '';
-                }, 3000);
-            } else {
-                // Show error message
-                timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to update time slots</div>';
-                
-                // Show reload option
-                setTimeout(() => {
-                    timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to update time slots. <a href="javascript:void(0)" id="reload-page-slots" style="color: #0066cc; text-decoration: underline;">Please refresh the page</a> and try again.</div>';
+            return response.text().then(text => {
+                try {
+                    // Try to parse the response as JSON
+                    const data = JSON.parse(text);
                     
-                    document.getElementById('reload-page-slots')?.addEventListener('click', function() {
-                        window.location.reload();
-                    });
-                }, 3000);
-            }
+                    if (response.ok) {
+                        // Show success message
+                        timeSlotStatusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> ' + (data.message || 'Time slots updated') + '</div>';
+                        
+                        // Clear pending changes
+                        pendingChanges = [];
+                        
+                        // Clear message after 3 seconds
+                        setTimeout(() => {
+                            timeSlotStatusDiv.innerHTML = '';
+                        }, 3000);
+                    } else {
+                        // Show error message from JSON response
+                        timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> ' + (data.error || 'Failed to update time slots') + '</div>';
+                    }
+                    
+                    return data;
+                } catch (e) {
+                    // JSON parsing error - likely PHP output mixed with JSON
+                    console.error('JSON parsing error:', e);
+                    console.error('Raw response:', text);
+                    
+                    // Show error with more details
+                    timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Invalid server response (JSON parse error). Try again or refresh the page.</div>';
+                    
+                    // Provide reload option
+                    setTimeout(() => {
+                        timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Invalid server response. <a href="javascript:void(0)" id="reload-page-slots" style="color: #0066cc; text-decoration: underline;">Please refresh the page</a> and try again.</div>';
+                        
+                        document.getElementById('reload-page-slots')?.addEventListener('click', function() {
+                            window.location.reload();
+                        });
+                    }, 3000);
+                    
+                    throw new Error('JSON parsing error: ' + e.message);
+                }
+            });
         })
         .catch(error => {
             console.error('Error:', error);
-            timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Failed to update time slots</div>';
+            timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> ' + error.message + '</div>';
         });
     }
 

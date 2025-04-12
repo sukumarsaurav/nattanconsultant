@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Diagnostics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Connection Diagnostics</h1>
+    
+    <p>This tool will test your database connection and availability_schedule table structure to help diagnose any issues.</p>
+    
+    <button id="runTests">Run Diagnostics</button>
+    
+    <div class="results">
+        <h2>Results:</h2>
+        <pre id="results">Click "Run Diagnostics" to begin testing...</pre>
+    </div>
+    
+    <script>
+        document.getElementById('runTests').addEventListener('click', function() {
+            const resultsElem = document.getElementById('results');
+            resultsElem.textContent = 'Running tests...';
+            
+            fetch('ajax-debug.php')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Response:', data);
+                    
+                    // Format the results
+                    let resultText = '';
+                    if (data.success) {
+                        resultText += '✅ SUCCESS: All tests passed\n\n';
+                    } else {
+                        resultText += '❌ ERROR: ' + (data.error || 'Unknown error') + '\n\n';
+                    }
+                    
+                    resultText += 'Test Results:\n';
+                    resultText += '=============\n\n';
+                    
+                    for (const [testName, result] of Object.entries(data.tests)) {
+                        if (typeof result === 'object' && result !== null) {
+                            resultText += `${testName}:\n`;
+                            resultText += JSON.stringify(result, null, 2) + '\n\n';
+                        } else {
+                            resultText += `${testName}: ${result === true ? '✅ Success' : result === false ? '❌ Failed' : result}\n`;
+                        }
+                    }
+                    
+                    // Add solution suggestions
+                    resultText += '\nPossible Solutions:\n';
+                    resultText += '=================\n';
+                    
+                    if (!data.tests.config_exists || !data.tests.config_included) {
+                        resultText += '- Check that includes/config.php exists and is accessible\n';
+                    }
+                    
+                    if (!data.tests.db_connection) {
+                        resultText += '- Verify database credentials in config.php\n';
+                        resultText += '- Make sure the database server is running\n';
+                    }
+                    
+                    if (!data.tests.table_exists) {
+                        resultText += '- Create the availability_schedule table using the SQL from database.sql\n';
+                    }
+                    
+                    if (data.tests.table_exists && data.tests.table_columns) {
+                        // Check for required columns
+                        const requiredColumns = ['id', 'admin_user_id', 'day_of_week', 'start_time', 'end_time', 'is_available'];
+                        const missingColumns = requiredColumns.filter(col => !data.tests.table_columns.includes(col));
+                        
+                        if (missingColumns.length > 0) {
+                            resultText += `- The following required columns are missing from the availability_schedule table: ${missingColumns.join(', ')}\n`;
+                        }
+                    }
+                    
+                    if (data.tests.has_consultant_id === false) {
+                        resultText += '- You are not logged in as a consultant. Please log in and try again.\n';
+                    }
+                    
+                    if (data.tests.consultant_exists === false) {
+                        resultText += '- Your consultant account is not found in the database.\n';
+                    }
+                    
+                    if (data.tests.insert_test === false) {
+                        resultText += '- Insert operation failed. Check the table structure and permissions.\n';
+                        if (data.tests.insert_error) {
+                            resultText += `  Error: ${data.tests.insert_error}\n`;
+                        }
+                    }
+                    
+                    resultsElem.textContent = resultText;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    resultsElem.textContent = 'An error occurred while running the tests: ' + error.message;
+                });
+        });
+    </script>
+</body>
+</html> 

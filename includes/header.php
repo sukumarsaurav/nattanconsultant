@@ -11,31 +11,24 @@ if (session_status() === PHP_SESSION_NONE) {
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // Check if consultant is logged in
-$is_logged_in = isConsultantAuthenticated();
+$is_logged_in = isset($_SESSION['consultant_id']) && !empty($_SESSION['consultant_id']);
 
-// Get pending appointments count for badge
-$pending_count = 0;
+// DB connection to get real-time data for the sidebar
+$conn = null;
 if ($is_logged_in) {
+    $conn = mysqli_connect("193.203.184.121", "u911550082_nattan", "Milk@sdk14", "u911550082_nattan");
+    
+    // Get pending appointments count for badge
     $consultant_id = $_SESSION['consultant_id'];
+    $pending_count = 0;
     
-    // Check which column exists in the appointments table
-    $column_check_query = "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS 
-                          WHERE TABLE_NAME = 'appointments' 
-                          AND COLUMN_NAME = 'consultant_id' 
-                          AND TABLE_SCHEMA = DATABASE()";
-    $column_check_result = executeQuery($column_check_query);
-    $column_check_row = mysqli_fetch_assoc($column_check_result);
-    
-    // Use the appropriate column name
-    $consultant_column = ($column_check_row['count'] > 0) ? 'consultant_id' : 'user_id';
-    
-    // Use prepared statement to prevent SQL injection
-    $query = "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND $consultant_column = ?";
-    $result = executeQuery($query, [$consultant_id]);
-    
-    if ($result) {
-        $row = mysqli_fetch_assoc($result);
-        $pending_count = $row['count'];
+    if ($conn) {
+        $query = "SELECT COUNT(*) as count FROM appointments WHERE consultant_id = $consultant_id AND status = 'pending'";
+        $result = mysqli_query($conn, $query);
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $pending_count = $row['count'];
+        }
     }
 }
 ?>
@@ -56,12 +49,13 @@ if ($is_logged_in) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <!-- Consultant CSS -->
-    <link rel="stylesheet" href="../css/consultant-style.css">
-    <link rel="stylesheet" href="../css/navigation.css">
-    <link rel="stylesheet" href="../css/dashboard.css">
-    <link rel="stylesheet" href="../css/forms.css">
-    <link rel="stylesheet" href="../css/notifications.css">
-    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="stylesheet" href="css/consultant-style.css">
+    <link rel="stylesheet" href="css/navigation.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/forms.css">
+    <link rel="stylesheet" href="css/notifications.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/topbar.css">
     
     <!-- Page specific CSS if available -->
     <?php if (isset($page_specific_css)): ?>
@@ -71,6 +65,34 @@ if ($is_logged_in) {
     <?php endif; ?>
 </head>
 <body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container top-bar-container">
+            <div class="top-bar-contact">
+                <a href="mailto:info@canext.com">
+                    <i class="fas fa-envelope"></i> info@canext.com
+                </a>
+            </div>
+            <div class="top-bar-actions">
+                <?php if (!$is_logged_in): ?>
+                    <a href="index.php">
+                        <i class="fas fa-sign-in-alt"></i> Member Login
+                    </a>
+                    <a href="consultant-register.php">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                <?php else: ?>
+                    <a href="consultant-dashboard.php">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a href="logout.php">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
     <?php if ($is_logged_in): ?>
         <!-- Mobile Menu Toggle -->
         <button id="mobile-menu-toggle">
@@ -126,10 +148,7 @@ if ($is_logged_in) {
                         </li>
                     </ul>
                 </div>
-              
                 
-                <div class="user-menu">
-                      
                 <div class="nav-section">
                     <div class="nav-section-title">Account</div>
                     <ul class="nav-menu">
@@ -142,14 +161,6 @@ if ($is_logged_in) {
                             </a>
                         </li>
                         <li class="nav-menu-item">
-                            <a href="consultant-membership.php" class="nav-menu-link <?php echo $current_page == 'consultant-membership.php' ? 'active' : ''; ?>">
-                                <div class="nav-menu-icon">
-                                    <i class="fas fa-crown"></i>
-                                </div>
-                                <span class="nav-menu-text">Membership</span>
-                            </a>
-                        </li>
-                        <li class="nav-menu-item">
                             <a href="consultant-settings.php" class="nav-menu-link <?php echo $current_page == 'consultant-settings.php' ? 'active' : ''; ?>">
                                 <div class="nav-menu-icon">
                                     <i class="fas fa-cog"></i>
@@ -157,40 +168,46 @@ if ($is_logged_in) {
                                 <span class="nav-menu-text">Settings</span>
                             </a>
                         </li>
-                        <li class="nav-menu-item">
-                            <a href="logout.php" class="nav-menu-link">
-                                <div class="nav-menu-icon">
-                                    <i class="fas fa-sign-out-alt"></i>
-                                </div>
-                                <span class="nav-menu-text">Logout</span>
-                            </a>
-                        </li>
                     </ul>
                 </div>
+                
+                <div class="user-menu">
                     <div class="user-menu-trigger">
                         <div class="user-avatar">
                             <?php 
-                            // Get consultant profile image using prepared statement
+                            // Get consultant profile image
                             $profile_image = '';
-                            $query = "SELECT profile_image FROM consultants WHERE id = ?";
-                            $result = executeQuery($query, [$consultant_id]);
-                            
-                            if ($result && mysqli_num_rows($result) > 0) {
-                                $row = mysqli_fetch_assoc($result);
-                                $profile_image = $row['profile_image'];
+                            if ($conn) {
+                                $query = "SELECT profile_image FROM consultants WHERE id = $consultant_id";
+                                $result = mysqli_query($conn, $query);
+                                if ($result && mysqli_num_rows($result) > 0) {
+                                    $row = mysqli_fetch_assoc($result);
+                                    $profile_image = $row['profile_image'];
+                                }
                             }
                             
                             if (!empty($profile_image)): 
                             ?>
-                                <img src="<?php echo htmlspecialchars($profile_image); ?>" alt="Profile">
+                                <img src="<?php echo $profile_image; ?>" alt="Profile">
                             <?php else: ?>
                                 <i class="fas fa-user"></i>
                             <?php endif; ?>
                         </div>
                         <div class="user-info">
-                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['consultant_name']); ?></div>
+                            <div class="user-name"><?php echo $_SESSION['consultant_name']; ?></div>
                             <div class="user-role">Consultant</div>
                         </div>
+                    </div>
+                    <div class="user-menu-dropdown">
+                        <a href="consultant-profile.php" class="user-menu-item">
+                            <i class="fas fa-user-circle"></i> My Profile
+                        </a>
+                        <a href="consultant-settings.php" class="user-menu-item">
+                            <i class="fas fa-cog"></i> Settings
+                        </a>
+                        <a href="logout.php" class="user-menu-item logout">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
                     </div>
                 </div>
             </div>

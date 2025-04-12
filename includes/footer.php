@@ -41,25 +41,51 @@ $is_logged_in = isset($_SESSION['consultant_id']) && !empty($_SESSION['consultan
         </div>
     </footer>
 
-    <!-- Additional Scripts -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        // Mobile menu toggle
-        document.getElementById('mobile-menu-toggle')?.addEventListener('click', function() {
-            document.getElementById('side-navigation')?.classList.toggle('active');
-        });
+    <!-- Core JavaScript -->
+    <script src="js/consultant-main.js"></script>
 
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', function(event) {
-            const sideNav = document.getElementById('side-navigation');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-            
-            if (sideNav && mobileToggle) {
-                if (!sideNav.contains(event.target) && !mobileToggle.contains(event.target)) {
-                    sideNav.classList.remove('active');
-                }
-            }
-        });
+    <!-- Page specific JavaScript if available -->
+    <?php if (isset($page_specific_js)): ?>
+        <?php foreach ($page_specific_js as $js_file): ?>
+            <script src="<?php echo $js_file; ?>"></script>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+    <!-- Initialize user menu dropdown -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // User menu dropdown
+        const userMenuTrigger = document.querySelector('.user-menu-trigger');
+        if (userMenuTrigger) {
+            userMenuTrigger.addEventListener('click', function() {
+                const userMenu = this.closest('.user-menu');
+                userMenu.classList.toggle('open');
+                
+                // Close when clicking outside
+                document.addEventListener('click', function closeDropdown(e) {
+                    if (!userMenu.contains(e.target)) {
+                        userMenu.classList.remove('open');
+                        document.removeEventListener('click', closeDropdown);
+                    }
+                });
+            });
+        }
+        
+        // Initialize notifications if function exists
+        if (typeof initNotifications === 'function') {
+            initNotifications();
+        }
+    });
+
+    // Function to show notifications (can be called from other scripts)
+    function showNotification(message, type = 'info') {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+        } else {
+            // Fallback if the notification system isn't loaded
+            alert(message);
+        }
+    }
     </script>
 
 <?php

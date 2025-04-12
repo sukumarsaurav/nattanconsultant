@@ -23,24 +23,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $office_address = sanitizeInput($_POST['office_address'] ?? null);
     $office_hours = sanitizeInput($_POST['office_hours'] ?? null);
     
-    // Update consultant information if no error occurred
-    if (empty($error_message)) {
+    // Check if this is a consultation fee update
+    if (isset($_POST['video_consultation_fee']) || isset($_POST['phone_consultation_fee']) || isset($_POST['in_person_consultation_fee'])) {
+        // Consultation fees form was submitted
+        $video_consultation_fee = sanitizeInput($_POST['video_consultation_fee'] ?? $consultant['video_consultation_fee']);
+        $phone_consultation_fee = sanitizeInput($_POST['phone_consultation_fee'] ?? $consultant['phone_consultation_fee']);
+        $in_person_consultation_fee = sanitizeInput($_POST['in_person_consultation_fee'] ?? $consultant['in_person_consultation_fee']);
+        
+        $video_consultation_available = isset($_POST['video_consultation_available']) ? 1 : 0;
+        $phone_consultation_available = isset($_POST['phone_consultation_available']) ? 1 : 0;
+        $in_person_consultation_available = isset($_POST['in_person_consultation_available']) ? 1 : 0;
+        
+        // Update consultant fees information
         $data = [
-            'bio' => $bio,
-            'office_address' => $office_address,
-            'office_hours' => $office_hours
+            'video_consultation_fee' => $video_consultation_fee,
+            'phone_consultation_fee' => $phone_consultation_fee,
+            'in_person_consultation_fee' => $in_person_consultation_fee,
+            'video_consultation_available' => $video_consultation_available,
+            'phone_consultation_available' => $phone_consultation_available,
+            'in_person_consultation_available' => $in_person_consultation_available
         ];
         
         $update_result = updateData('consultants', $data, 'id = ?', [$consultant_id]);
         
         if ($update_result) {
-            $success_message = 'Profile updated successfully!';
+            $success_message = 'Consultation fees updated successfully!';
             
             // Refresh consultant data
             $consultant_result = executeQuery($consultant_query, [$consultant_id]);
             $consultant = mysqli_fetch_assoc($consultant_result);
         } else {
-            $error_message = 'Error updating profile. Please try again.';
+            $error_message = 'Error updating consultation fees. Please try again.';
+        }
+    } else {
+        // Profile information form was submitted
+        // Update consultant information if no error occurred
+        if (empty($error_message)) {
+            $data = [
+                'bio' => $bio,
+                'office_address' => $office_address,
+                'office_hours' => $office_hours
+            ];
+            
+            $update_result = updateData('consultants', $data, 'id = ?', [$consultant_id]);
+            
+            if ($update_result) {
+                $success_message = 'Profile updated successfully!';
+                
+                // Refresh consultant data
+                $consultant_result = executeQuery($consultant_query, [$consultant_id]);
+                $consultant = mysqli_fetch_assoc($consultant_result);
+            } else {
+                $error_message = 'Error updating profile. Please try again.';
+            }
         }
     }
 }
