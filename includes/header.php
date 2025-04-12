@@ -126,7 +126,10 @@ if ($is_logged_in) {
                         </li>
                     </ul>
                 </div>
+              
                 
+                <div class="user-menu">
+                      
                 <div class="nav-section">
                     <div class="nav-section-title">Account</div>
                     <ul class="nav-menu">
@@ -136,6 +139,14 @@ if ($is_logged_in) {
                                     <i class="fas fa-user-circle"></i>
                                 </div>
                                 <span class="nav-menu-text">My Profile</span>
+                            </a>
+                        </li>
+                        <li class="nav-menu-item">
+                            <a href="consultant-membership.php" class="nav-menu-link <?php echo $current_page == 'consultant-membership.php' ? 'active' : ''; ?>">
+                                <div class="nav-menu-icon">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <span class="nav-menu-text">Membership</span>
                             </a>
                         </li>
                         <li class="nav-menu-item">
@@ -156,8 +167,6 @@ if ($is_logged_in) {
                         </li>
                     </ul>
                 </div>
-                
-                <div class="user-menu">
                     <div class="user-menu-trigger">
                         <div class="user-avatar">
                             <?php 

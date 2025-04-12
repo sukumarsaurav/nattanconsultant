@@ -61,6 +61,74 @@ $consultant = mysqli_fetch_assoc($consultant_result);
         
         <!-- Additional Profile Sections -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <!-- Membership Plan -->
+            <div style="background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); padding: 20px;">
+                <h3 style="margin: 0 0 15px; color: var(--color-burgundy); font-size: 1.2rem;">
+                    <i class="fas fa-crown" style="margin-right: 10px;"></i> Membership Plan
+                </h3>
+                
+                <?php 
+                $plan_colors = [
+                    'bronze' => '#CD7F32',
+                    'silver' => '#C0C0C0',
+                    'gold' => '#FFD700'
+                ];
+                $current_plan = $consultant['membership_plan'] ?? 'bronze';
+                $plan_color = $plan_colors[$current_plan] ?? $plan_colors['bronze'];
+                ?>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background-color: <?php echo $plan_color; ?>; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                        <i class="fas fa-crown" style="color: <?php echo $current_plan === 'gold' ? '#333' : 'white'; ?>;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--color-dark);"><?php echo ucfirst($current_plan); ?> Plan</div>
+                        <?php if ($current_plan !== 'gold'): ?>
+                            <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                                <a href="consultant-membership.php" style="color: var(--color-burgundy); text-decoration: none;">
+                                    Upgrade your plan <i class="fas fa-arrow-right" style="font-size: 0.8rem;"></i>
+                                </a>
+                            </div>
+                        <?php else: ?>
+                            <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">You are on our highest plan</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <?php
+                // Define plan features based on membership level
+                $features = [
+                    'bronze' => [
+                        'Basic profile listing',
+                        '5 client bookings per month',
+                        'Email support'
+                    ],
+                    'silver' => [
+                        'Enhanced profile listing',
+                        '20 client bookings per month',
+                        'Priority email support',
+                        'Featured profile listing'
+                    ],
+                    'gold' => [
+                        'Premium profile listing',
+                        'Unlimited client bookings',
+                        '24/7 priority support',
+                        'Top featured profile listing',
+                        'Client messaging system'
+                    ]
+                ];
+                ?>
+                
+                <div>
+                    <div style="font-weight: 500; margin-bottom: 10px; color: #666;">Plan features:</div>
+                    <ul style="margin: 0; padding-left: 25px; color: #666;">
+                        <?php foreach ($features[$current_plan] as $feature): ?>
+                            <li style="margin-bottom: 5px;"><?php echo $feature; ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+            
             <!-- Specializations -->
             <div style="background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); padding: 20px;">
                 <h3 style="margin: 0 0 15px; color: var(--color-burgundy); font-size: 1.2rem;">
