@@ -124,14 +124,6 @@ if ($is_logged_in) {
                                 <span class="nav-menu-text">Clients</span>
                             </a>
                         </li>
-                        <li class="nav-menu-item">
-                            <a href="my-customers.php" class="nav-menu-link <?php echo $current_page == 'my-customers.php' ? 'active' : ''; ?>">
-                                <div class="nav-menu-icon">
-                                    <i class="fas fa-user-friends"></i>
-                                </div>
-                                <span class="nav-menu-text">My Customers</span>
-                            </a>
-                        </li>
                     </ul>
                 </div>
                 
@@ -152,6 +144,14 @@ if ($is_logged_in) {
                                     <i class="fas fa-cog"></i>
                                 </div>
                                 <span class="nav-menu-text">Settings</span>
+                            </a>
+                        </li>
+                        <li class="nav-menu-item">
+                            <a href="logout.php" class="nav-menu-link">
+                                <div class="nav-menu-icon">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </div>
+                                <span class="nav-menu-text">Logout</span>
                             </a>
                         </li>
                     </ul>
@@ -182,17 +182,6 @@ if ($is_logged_in) {
                             <div class="user-name"><?php echo htmlspecialchars($_SESSION['consultant_name']); ?></div>
                             <div class="user-role">Consultant</div>
                         </div>
-                    </div>
-                    <div class="user-menu-dropdown">
-                        <a href="consultant-profile.php" class="user-menu-item">
-                            <i class="fas fa-user-circle"></i> My Profile
-                        </a>
-                        <a href="consultant-settings.php" class="user-menu-item">
-                            <i class="fas fa-cog"></i> Settings
-                        </a>
-                        <a href="logout.php" class="user-menu-item logout">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </a>
                     </div>
                 </div>
             </div>
