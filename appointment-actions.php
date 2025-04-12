@@ -8,6 +8,20 @@ requireConsultantAuth();
 // Get consultant ID from session
 $consultant_id = $_SESSION['consultant_id'];
 
+// Helper function to get the correct consultant column name
+function getConsultantColumnName() {
+    // Check if consultant_id column exists in the appointments table
+    $column_check_query = "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS 
+                           WHERE TABLE_NAME = 'appointments' 
+                           AND COLUMN_NAME = 'consultant_id' 
+                           AND TABLE_SCHEMA = DATABASE()";
+    $column_check_result = executeQuery($column_check_query);
+    $column_check_row = mysqli_fetch_assoc($column_check_result);
+    
+    // Return the correct column name based on database structure
+    return ($column_check_row['count'] > 0) ? 'consultant_id' : 'user_id';
+}
+
 // Get action type
 $action = isset($_POST['action']) ? sanitizeInput($_POST['action']) : '';
 
@@ -54,8 +68,11 @@ function updateAppointmentStatus() {
         exit();
     }
     
+    // Get the correct consultant column name
+    $consultant_column = getConsultantColumnName();
+    
     // Verify appointment belongs to this consultant
-    $check_query = "SELECT id FROM appointments WHERE id = ? AND user_id = ?";
+    $check_query = "SELECT id FROM appointments WHERE id = ? AND $consultant_column = ?";
     $result = executeQuery($check_query, [$appointment_id, $consultant_id]);
     
     if (!$result || mysqli_num_rows($result) == 0) {
@@ -68,7 +85,7 @@ function updateAppointmentStatus() {
         'status' => $status,
         'updated_at' => date('Y-m-d H:i:s')
     ];
-    $update_success = updateData('appointments', $update_data, 'id = ? AND user_id = ?', [$appointment_id, $consultant_id]);
+    $update_success = updateData('appointments', $update_data, "id = ? AND $consultant_column = ?", [$appointment_id, $consultant_id]);
     
     if ($update_success) {
         // Log status change in appointment history
@@ -102,15 +119,19 @@ function getAppointmentsForMonth() {
         exit();
     }
     
+    // Get the correct consultant column name
+    $consultant_column = getConsultantColumnName();
+    
     // Format month for query
     $month_str = str_pad($month, 2, '0', STR_PAD_LEFT);
     
     // Get appointments for this consultant in the specified month using prepared statement
     $query = "SELECT a.*, 
-              CONCAT(a.first_name, ' ', a.last_name) as client_name,
+              CONCAT(c.first_name, ' ', c.last_name) as client_name,
               DATE(a.appointment_datetime) as date
               FROM appointments a 
-              WHERE a.user_id = ? 
+              LEFT JOIN customers c ON a.customer_id = c.id
+              WHERE a.$consultant_column = ? 
               AND DATE_FORMAT(a.appointment_datetime, '%Y-%m') = ?
               ORDER BY a.appointment_datetime ASC";
     
@@ -150,8 +171,11 @@ function deleteAppointment() {
         exit();
     }
     
+    // Get the correct consultant column name
+    $consultant_column = getConsultantColumnName();
+    
     // Verify appointment belongs to this consultant
-    $check_query = "SELECT id FROM appointments WHERE id = ? AND user_id = ?";
+    $check_query = "SELECT id FROM appointments WHERE id = ? AND $consultant_column = ?";
     $result = executeQuery($check_query, [$appointment_id, $consultant_id]);
     
     if (!$result || mysqli_num_rows($result) == 0) {
@@ -165,7 +189,7 @@ function deleteAppointment() {
         'is_deleted' => 1,
         'updated_at' => date('Y-m-d H:i:s')
     ];
-    $update_success = updateData('appointments', $update_data, 'id = ? AND user_id = ?', [$appointment_id, $consultant_id]);
+    $update_success = updateData('appointments', $update_data, "id = ? AND $consultant_column = ?", [$appointment_id, $consultant_id]);
     
     if ($update_success) {
         // Log deletion in appointment history
@@ -173,8 +197,8 @@ function deleteAppointment() {
             'appointment_id' => $appointment_id,
             'user_id' => $consultant_id,
             'user_type' => 'consultant',
-            'action' => 'delete',
-            'details' => 'Appointment deleted',
+            'action' => 'cancelled',
+            'details' => 'Appointment cancelled/deleted by consultant',
             'created_at' => date('Y-m-d H:i:s')
         ];
         insertData('appointment_history', $history_data);
@@ -199,8 +223,11 @@ function rescheduleAppointment() {
         exit();
     }
     
+    // Get the correct consultant column name
+    $consultant_column = getConsultantColumnName();
+    
     // Verify appointment belongs to this consultant
-    $check_query = "SELECT id, appointment_datetime FROM appointments WHERE id = ? AND user_id = ?";
+    $check_query = "SELECT id, appointment_datetime FROM appointments WHERE id = ? AND $consultant_column = ?";
     $result = executeQuery($check_query, [$appointment_id, $consultant_id]);
     
     if (!$result || mysqli_num_rows($result) == 0) {
@@ -217,7 +244,7 @@ function rescheduleAppointment() {
         'appointment_datetime' => $datetime,
         'updated_at' => date('Y-m-d H:i:s')
     ];
-    $update_success = updateData('appointments', $update_data, 'id = ? AND user_id = ?', [$appointment_id, $consultant_id]);
+    $update_success = updateData('appointments', $update_data, "id = ? AND $consultant_column = ?", [$appointment_id, $consultant_id]);
     
     if ($update_success) {
         // Log rescheduling in appointment history
@@ -251,8 +278,11 @@ function addAppointmentNote() {
         exit();
     }
     
+    // Get the correct consultant column name
+    $consultant_column = getConsultantColumnName();
+    
     // Verify appointment belongs to this consultant
-    $check_query = "SELECT id FROM appointments WHERE id = ? AND user_id = ?";
+    $check_query = "SELECT id FROM appointments WHERE id = ? AND $consultant_column = ?";
     $result = executeQuery($check_query, [$appointment_id, $consultant_id]);
     
     if (!$result || mysqli_num_rows($result) == 0) {

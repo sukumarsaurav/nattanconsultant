@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Apr 12, 2025 at 08:44 AM
+-- Generation Time: Apr 12, 2025 at 04:26 PM
 -- Server version: 10.11.10-MariaDB-log
 -- PHP Version: 7.2.34
 
@@ -58,7 +58,6 @@ INSERT INTO `admin_users` (`id`, `username`, `password`, `first_name`, `last_nam
 
 CREATE TABLE `appointments` (
   `id` int(11) NOT NULL,
-  `consultant_id` int(11) NOT NULL,
   `consultation_type` varchar(50) NOT NULL,
   `appointment_datetime` datetime NOT NULL,
   `first_name` varchar(50) NOT NULL,
@@ -83,13 +82,13 @@ CREATE TABLE `appointments` (
 -- Dumping data for table `appointments`
 --
 
-INSERT INTO `appointments` (`id`, `consultant_id`, `consultation_type`, `appointment_datetime`, `first_name`, `last_name`, `email`, `phone`, `address`, `city`, `postal_code`, `country`, `immigration_purpose`, `special_requests`, `status`, `payment_status`, `payment_amount`, `additional_notes`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Video Consultation', '2023-05-15 10:00:00', 'John', 'Smith', 'john.smith@example.com', '+1 (123) 456-7890', NULL, NULL, NULL, 'USA', 'Express Entry', NULL, 'confirmed', 'paid', 150.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
-(2, 1, 'In-Person Consultation', '2023-05-14 14:00:00', 'Maria', 'Rodriguez', 'maria.r@example.com', '+1 (234) 567-8901', NULL, NULL, NULL, 'Mexico', 'Study Permit', NULL, 'completed', 'paid', 200.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
-(3, 1, 'Phone Consultation', '2023-05-14 11:30:00', 'David', 'Chen', 'david.chen@example.com', '+1 (345) 678-9012', NULL, NULL, NULL, 'China', 'Work Permit', NULL, 'cancelled', 'refunded', 120.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
-(4, 1, 'Video Consultation', '2023-05-13 15:00:00', 'Sarah', 'Johnson', 'sarah.j@example.com', '+1 (456) 789-0123', NULL, NULL, NULL, 'Canada', 'Family Sponsorship', NULL, 'completed', 'paid', 150.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
-(5, 1, 'In-Person Consultation', '2023-05-13 10:00:00', 'Raj', 'Patel', 'raj.patel@example.com', '+1 (567) 890-1234', NULL, NULL, NULL, 'India', 'Business Immigration', NULL, 'confirmed', 'paid', 200.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
-(6, 1, 'Video Consultation', '2025-04-05 10:00:00', 'Sukumar', 'saurav', 'sukumarsaurav@gmail.com', '09991289245', NULL, NULL, NULL, NULL, 'study_permit', 'test', 'pending', 'unpaid', 150.00, NULL, '2025-04-03 04:43:16', '2025-04-03 04:43:16');
+INSERT INTO `appointments` (`id`, `consultation_type`, `appointment_datetime`, `first_name`, `last_name`, `email`, `phone`, `address`, `city`, `postal_code`, `country`, `immigration_purpose`, `special_requests`, `status`, `payment_status`, `payment_amount`, `additional_notes`, `created_at`, `updated_at`) VALUES
+(1, 'Video Consultation', '2023-05-15 10:00:00', 'John', 'Smith', 'john.smith@example.com', '+1 (123) 456-7890', NULL, NULL, NULL, 'USA', 'Express Entry', NULL, 'confirmed', 'paid', 150.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
+(2, 'In-Person Consultation', '2023-05-14 14:00:00', 'Maria', 'Rodriguez', 'maria.r@example.com', '+1 (234) 567-8901', NULL, NULL, NULL, 'Mexico', 'Study Permit', NULL, 'completed', 'paid', 200.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
+(3, 'Phone Consultation', '2023-05-14 11:30:00', 'David', 'Chen', 'david.chen@example.com', '+1 (345) 678-9012', NULL, NULL, NULL, 'China', 'Work Permit', NULL, 'cancelled', 'refunded', 120.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
+(4, 'Video Consultation', '2023-05-13 15:00:00', 'Sarah', 'Johnson', 'sarah.j@example.com', '+1 (456) 789-0123', NULL, NULL, NULL, 'Canada', 'Family Sponsorship', NULL, 'completed', 'paid', 150.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
+(5, 'In-Person Consultation', '2023-05-13 10:00:00', 'Raj', 'Patel', 'raj.patel@example.com', '+1 (567) 890-1234', NULL, NULL, NULL, 'India', 'Business Immigration', NULL, 'confirmed', 'paid', 200.00, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
+(6, 'Video Consultation', '2025-04-05 10:00:00', 'Sukumar', 'saurav', 'sukumarsaurav@gmail.com', '09991289245', NULL, NULL, NULL, NULL, 'study_permit', 'test', 'pending', 'unpaid', 150.00, NULL, '2025-04-03 04:43:16', '2025-04-03 04:43:16');
 
 -- --------------------------------------------------------
 
@@ -222,7 +221,7 @@ CREATE TABLE `consultants` (
 INSERT INTO `consultants` (`id`, `first_name`, `last_name`, `rcic_number`, `status`, `membership_plan`, `profile_image`, `specialization`, `languages`, `bio`, `consultation_fee`, `created_at`, `updated_at`, `video_consultation_available`, `phone_consultation_available`, `in_person_consultation_available`, `video_consultation_fee`, `phone_consultation_fee`, `in_person_consultation_fee`, `years_experience`, `successful_cases`, `office_address`, `office_hours`, `email`, `phone`, `password`) VALUES
 (9, 'Ahmed', 'Hassan', 'R901234', 'approved', 'gold', 'ahmed-hassan.jpg', 'Express Entry,Work Permits,Family Sponsorship', 'English,Arabic', 'Comprehensive experience in all immigration streams with a focus on Express Entry and family class applications.', 200.00, '2025-04-12 03:42:30', '2025-04-12 03:51:25', 1, 1, 1, 150.00, 100.00, 200.00, 8, 250, '123 Immigration Street\nToronto, ON M5V 2H1\nCanada', 'Monday - Friday: 9:00 AM - 5:00 PM\nSaturday: By appointment\nSunday: Closed', 'ahmed.hassan@canext.ca', '+1 (416) 555-0123', ''),
 (10, 'Emma', 'Brown', 'R012345', 'approved', 'bronze', 'emma-brown.jpg', 'Study Permits,Express Entry', 'English,French', 'Passionate about education and skilled immigration. Helping clients navigate the complex immigration system with confidence.', 125.00, '2025-04-12 03:42:30', '2025-04-12 03:51:25', 1, 1, 1, 150.00, 100.00, 200.00, 8, 250, '123 Immigration Street\nToronto, ON M5V 2H1\nCanada', 'Monday - Friday: 9:00 AM - 5:00 PM\nSaturday: By appointment\nSunday: Closed', 'emma.brown@canext.ca', '+1 (416) 555-0123', ''),
-(12, 'Sukumar', 'saurav', '7687tyguhj', 'approved', 'bronze', NULL, 'Express Entry,Work Permits', 'French,Punjabi', 'fghh', 0.00, '2025-04-12 05:11:17', '2025-04-12 05:11:36', 1, 1, 1, 150.00, 100.00, 200.00, 5, 100, NULL, NULL, 'sukumarsaurav@gmail.com', '09991289245', '$2y$12$vmw2Nc9BT1sb9SCXy/RBpOxbfizq5JQaVGjAc6W46/4Se8buph8Cu'),
+(12, '', '', '', 'approved', 'bronze', NULL, '', '', '', 0.00, '2025-04-12 05:11:17', '2025-04-12 14:19:37', 1, 1, 1, 150.00, 100.00, 200.00, 0, 0, '', '', '', '', '$2y$12$vmw2Nc9BT1sb9SCXy/RBpOxbfizq5JQaVGjAc6W46/4Se8buph8Cu'),
 (13, 'saurav', 'suku', '', 'pending', 'bronze', NULL, NULL, NULL, NULL, 0.00, '2025-04-12 07:23:27', '2025-04-12 07:23:24', 1, 1, 1, 150.00, 100.00, 200.00, 5, 100, NULL, NULL, 'info@neowebx.com', '8080808808', '$2y$12$1Os0WzF/k9XQeN9aueaAyupohTyWfZOzDLN1tRToSZR7VJtlWiBM6');
 
 -- --------------------------------------------------------
@@ -292,6 +291,29 @@ INSERT INTO `customers` (`id`, `first_name`, `last_name`, `email`, `phone`, `add
 (4, 'Sarah', 'Johnson', 'sarah.j@example.com', '+1 (456) 789-0123', NULL, NULL, NULL, 'Canada', NULL, 'Canadian', NULL, NULL, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
 (5, 'Raj', 'Patel', 'raj.patel@example.com', '+1 (567) 890-1234', NULL, NULL, NULL, 'India', NULL, 'Indian', NULL, NULL, NULL, '2025-04-03 04:30:27', '2025-04-03 04:30:27'),
 (6, 'Sukumar', 'saurav', 'sukumarsaurav@gmail.com', '09991289245', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'pr', NULL, '2025-04-03 04:43:16', '2025-04-03 04:43:16');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `day_consultation_availability`
+--
+
+CREATE TABLE `day_consultation_availability` (
+  `id` int(11) NOT NULL,
+  `consultant_id` int(11) NOT NULL,
+  `day_of_week` varchar(20) NOT NULL,
+  `video_available` tinyint(1) DEFAULT 0,
+  `phone_available` tinyint(1) DEFAULT 0,
+  `in_person_available` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `day_consultation_availability`
+--
+
+INSERT INTO `day_consultation_availability` (`id`, `consultant_id`, `day_of_week`, `video_available`, `phone_available`, `in_person_available`) VALUES
+(1, 12, 'saturday', 1, 1, 1),
+(2, 12, 'sunday', 1, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -483,7 +505,7 @@ CREATE TABLE `news_articles` (
 --
 
 INSERT INTO `news_articles` (`id`, `title`, `slug`, `image`, `excerpt`, `content`, `publish_date`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Breaking News: Canada Introduces New Immigration Reforms for 2025', 'breaking-news-canada-introduces-new-immigration-reforms-for-2025', 'breaking-news-canada-introduces-new-immigration-reforms-for-2025-1743658318.png', 'Ottawa, Canada', 'The Canadian government has announced a series of new immigration reforms set to take effect in early 2025. These changes aim to streamline the immigration process, attract skilled workers, and address labor shortages in key industries.\r\n\r\nKey Highlights of the New Reforms\r\n✅ Faster Processing for Express Entry\r\nThe processing time for Express Entry applications will be reduced from six months to four months, allowing skilled workers to receive their permanent residency (PR) status more quickly.\r\n\r\n✅ Expanded Provincial Nominee Program (PNP)\r\nProvinces will receive an increased quota for selecting immigrants under the PNP, giving regions more control over addressing their specific labor market needs.\r\n\r\n✅ New Pathway for International Students\r\nA special PR pathway will be introduced for international students who graduate from Canadian institutions and secure full-time employment in Canada.\r\n\r\n✅ Enhanced Family Sponsorship Program\r\nFamily reunification will be prioritized with faster processing times for spousal and parental sponsorship applications, reducing wait times from two years to just one year.\r\n\r\nGovernment\'s Vision for Immigration\r\nCanada\'s Immigration Minister, [Minister's Name], emphasized the importance of these reforms, stating:\r\n\"Immigration is the backbone of Canada's economic growth. These new policies will ensure that skilled workers, international students, and families can contribute to Canada's success while benefiting from new opportunities.\"', '2025-04-03 00:00:00', 'published', '2025-04-03 05:31:58', '2025-04-03 05:31:58');
+(1, 'Breaking News: Canada Introduces New Immigration Reforms for 2025', 'breaking-news-canada-introduces-new-immigration-reforms-for-2025', 'breaking-news-canada-introduces-new-immigration-reforms-for-2025-1743658318.png', 'Ottawa, Canada', 'The Canadian government has announced a series of new immigration reforms set to take effect in early 2025. These changes aim to streamline the immigration process, attract skilled workers, and address labor shortages in key industries.\r\n\r\nKey Highlights of the New Reforms\r\n✅ Faster Processing for Express Entry\r\nThe processing time for Express Entry applications will be reduced from six months to four months, allowing skilled workers to receive their permanent residency (PR) status more quickly.\r\n\r\n✅ Expanded Provincial Nominee Program (PNP)\r\nProvinces will receive an increased quota for selecting immigrants under the PNP, giving regions more control over addressing their specific labor market needs.\r\n\r\n✅ New Pathway for International Students\r\nA special PR pathway will be introduced for international students who graduate from Canadian institutions and secure full-time employment in Canada.\r\n\r\n✅ Enhanced Family Sponsorship Program\r\nFamily reunification will be prioritized with faster processing times for spousal and parental sponsorship applications, reducing wait times from two years to just one year.\r\n\r\nGovernment\'s Vision for Immigration\r\nCanada\'s Immigration Minister, [Minister’s Name], emphasized the importance of these reforms, stating:\r\n\"Immigration is the backbone of Canada’s economic growth. These new policies will ensure that skilled workers, international students, and families can contribute to Canada’s success while benefiting from new opportunities.\"', '2025-04-03 00:00:00', 'published', '2025-04-03 05:31:58', '2025-04-03 05:31:58');
 
 -- --------------------------------------------------------
 
@@ -648,6 +670,13 @@ ALTER TABLE `customers`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `day_consultation_availability`
+--
+ALTER TABLE `day_consultation_availability`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `consultant_day` (`consultant_id`,`day_of_week`);
+
+--
 -- Indexes for table `downloadable_resources`
 --
 ALTER TABLE `downloadable_resources`
@@ -782,6 +811,12 @@ ALTER TABLE `customers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
+-- AUTO_INCREMENT for table `day_consultation_availability`
+--
+ALTER TABLE `day_consultation_availability`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `downloadable_resources`
 --
 ALTER TABLE `downloadable_resources`
@@ -869,6 +904,12 @@ ALTER TABLE `consultant_reviews`
 ALTER TABLE `consultation_notes`
   ADD CONSTRAINT `consultation_notes_ibfk_1` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `consultation_notes_ibfk_2` FOREIGN KEY (`admin_user_id`) REFERENCES `admin_users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `day_consultation_availability`
+--
+ALTER TABLE `day_consultation_availability`
+  ADD CONSTRAINT `day_consultation_availability_ibfk_1` FOREIGN KEY (`consultant_id`) REFERENCES `consultants` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `downloadable_resources`

@@ -18,9 +18,20 @@ $pending_count = 0;
 if ($is_logged_in) {
     $consultant_id = $_SESSION['consultant_id'];
     
+    // Check which column exists in the appointments table
+    $column_check_query = "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS 
+                          WHERE TABLE_NAME = 'appointments' 
+                          AND COLUMN_NAME = 'consultant_id' 
+                          AND TABLE_SCHEMA = DATABASE()";
+    $column_check_result = executeQuery($column_check_query);
+    $column_check_row = mysqli_fetch_assoc($column_check_result);
+    
+    // Use the appropriate column name
+    $consultant_column = ($column_check_row['count'] > 0) ? 'consultant_id' : 'user_id';
+    
     // Use prepared statement to prevent SQL injection
-    $query = "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'";
-    $result = executeQuery($query, []);
+    $query = "SELECT COUNT(*) as count FROM appointments WHERE status = 'pending' AND $consultant_column = ?";
+    $result = executeQuery($query, [$consultant_id]);
     
     if ($result) {
         $row = mysqli_fetch_assoc($result);
@@ -111,6 +122,14 @@ if ($is_logged_in) {
                                     <i class="fas fa-users"></i>
                                 </div>
                                 <span class="nav-menu-text">Clients</span>
+                            </a>
+                        </li>
+                        <li class="nav-menu-item">
+                            <a href="my-customers.php" class="nav-menu-link <?php echo $current_page == 'my-customers.php' ? 'active' : ''; ?>">
+                                <div class="nav-menu-icon">
+                                    <i class="fas fa-user-friends"></i>
+                                </div>
+                                <span class="nav-menu-text">My Customers</span>
                             </a>
                         </li>
                     </ul>

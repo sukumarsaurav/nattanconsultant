@@ -8,10 +8,29 @@ requireConsultantAuth();
 // Get consultant ID from session
 $consultant_id = $_SESSION['consultant_id'];
 
+// Check which column exists in the appointments table
+$column_check_query = "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS 
+                      WHERE TABLE_NAME = 'appointments' 
+                      AND COLUMN_NAME = 'consultant_id' 
+                      AND TABLE_SCHEMA = DATABASE()";
+$column_check_result = executeQuery($column_check_query);
+$column_check_row = mysqli_fetch_assoc($column_check_result);
+
+// Use the appropriate column name
+$consultant_column = ($column_check_row['count'] > 0) ? 'consultant_id' : 'user_id';
+
 // Function to get record count
 function getRecordCount($table, $condition = '1=1') {
+    global $consultant_id, $consultant_column;
     $sql = "SELECT COUNT(*) as count FROM $table WHERE $condition";
-    $result = executeQuery($sql);
+    
+    // Add consultant filter for appointments table
+    if ($table === 'appointments') {
+        $sql = "SELECT COUNT(*) as count FROM $table WHERE $condition AND $consultant_column = ?";
+        $result = executeQuery($sql, [$consultant_id]);
+    } else {
+        $result = executeQuery($sql);
+    }
     
     if ($result && mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
@@ -33,17 +52,18 @@ $today_appointments = getRecordCount('appointments', "DATE(appointment_datetime)
 $completed_appointments = getRecordCount('appointments', "status = 'completed'");
 
 // Get recent appointments
-$recent_sql = "SELECT * FROM appointments ORDER BY created_at DESC LIMIT 5";
-$recent_result = executeQuery($recent_sql);
+$recent_sql = "SELECT * FROM appointments WHERE $consultant_column = ? ORDER BY created_at DESC LIMIT 5";
+$recent_result = executeQuery($recent_sql, [$consultant_id]);
 
 // Get upcoming appointments for today and tomorrow
 $upcoming_sql = "SELECT * FROM appointments 
-                WHERE appointment_datetime >= NOW() 
+                WHERE $consultant_column = ?
+                AND appointment_datetime >= NOW() 
                 AND appointment_datetime <= DATE_ADD(NOW(), INTERVAL 2 DAY)
                 AND status IN ('pending', 'confirmed')
                 ORDER BY appointment_datetime ASC 
                 LIMIT 5";
-$upcoming_result = executeQuery($upcoming_sql);
+$upcoming_result = executeQuery($upcoming_sql, [$consultant_id]);
 ?>
 
 <!-- Consultant Dashboard Page -->

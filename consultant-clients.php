@@ -8,9 +8,13 @@ requireConsultantAuth();
 // Get consultant ID from session
 $consultant_id = $_SESSION['consultant_id'];
 
-// Get clients data (using appointments for now since there's no dedicated clients table)
-$clients_query = "SELECT DISTINCT first_name, last_name, email, phone, country FROM appointments ORDER BY last_name, first_name";
-$clients_result = executeQuery($clients_query);
+// Get clients data - only show clients for this specific consultant
+$clients_query = "SELECT DISTINCT c.id, c.first_name, c.last_name, c.email, c.phone, c.country 
+                 FROM customers c 
+                 JOIN appointments a ON c.id = a.customer_id 
+                 WHERE a.consultant_id = ? 
+                 ORDER BY c.last_name, c.first_name";
+$clients_result = executeQuery($clients_query, [$consultant_id]);
 ?>
 
 <!-- Page Header -->
@@ -53,11 +57,11 @@ $clients_result = executeQuery($clients_query);
                                     <td style="padding: 15px;"><?php echo htmlspecialchars($client['country'] ?? 'Not specified'); ?></td>
                                     <td style="padding: 15px;">
                                         <div style="display: flex; gap: 10px;">
-                                            <a href="#" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background-color: #e3f2fd; color: #2196f3; border-radius: 5px; text-decoration: none;" title="View Details">
+                                            <a href="view-customer.php?id=<?php echo $client['id']; ?>" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background-color: #e3f2fd; color: #2196f3; border-radius: 5px; text-decoration: none;" title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="#" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background-color: #e8f5e9; color: #4caf50; border-radius: 5px; text-decoration: none;" title="Send Message">
-                                                <i class="fas fa-envelope"></i>
+                                            <a href="customer-appointments.php?customer_id=<?php echo $client['id']; ?>" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background-color: #e8f5e9; color: #4caf50; border-radius: 5px; text-decoration: none;" title="View Appointments">
+                                                <i class="fas fa-calendar-alt"></i>
                                             </a>
                                         </div>
                                     </td>

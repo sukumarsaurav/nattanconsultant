@@ -109,7 +109,27 @@ switch ($date_filter) {
 
 // Build the query
 $where_clause = !empty($conditions) ? implode(" AND ", $conditions) : "1=1";
-$sql = "SELECT * FROM appointments WHERE $where_clause ORDER BY appointment_datetime DESC LIMIT $offset, $results_per_page";
+
+// Check if consultant_id or user_id column exists in the appointments table
+$column_check_query = "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS 
+                       WHERE TABLE_NAME = 'appointments' 
+                       AND COLUMN_NAME = 'consultant_id' 
+                       AND TABLE_SCHEMA = DATABASE()";
+$column_check_result = executeQuery($column_check_query);
+$column_check_row = mysqli_fetch_assoc($column_check_result);
+
+// Decide which column to use (consultant_id or user_id)
+$consultant_column = ($column_check_row['count'] > 0) ? 'consultant_id' : 'user_id';
+
+// Always filter by the current consultant's ID
+$where_clause .= " AND $consultant_column = " . (int)$consultant_id;
+
+$sql = "SELECT a.*, CONCAT(c.first_name, ' ', c.last_name) as customer_name 
+        FROM appointments a
+        LEFT JOIN customers c ON a.customer_id = c.id  
+        WHERE $where_clause 
+        ORDER BY a.appointment_datetime DESC 
+        LIMIT $offset, $results_per_page";
 $result = executeQuery($sql);
 
 // Get total count for pagination
