@@ -62,14 +62,38 @@ $prev_date = (clone $current_date)->modify('-1 day')->format('Y-m-d');
 $next_date = (clone $current_date)->modify('+1 day')->format('Y-m-d');
 
 // Get existing schedule for selected day of week
-$schedule_query = "SELECT * FROM availability_schedule WHERE consultant_id = ? AND day_of_week = ? ORDER BY start_time";
-$schedule_result = executeQuery($schedule_query, [$consultant_id, $selected_day]);
-$schedule_slots = [];
+$schedule_query = "SELECT a.id, a.start_time, a.end_time, a.is_available, t.consultation_type 
+                  FROM availability_schedule a
+                  LEFT JOIN time_slot_consultation_types t ON a.id = t.availability_schedule_id
+                  WHERE a.consultant_id = ? AND a.day_of_week = ?
+                  ORDER BY a.start_time";
 
-while ($row = mysqli_fetch_assoc($schedule_result)) {
-    $key = $row['start_time'] . '|' . $row['end_time'] . '|' . (isset($row['consultation_type']) ? $row['consultation_type'] : '');
-    $schedule_slots[$key] = $row;
+$stmt = mysqli_prepare($conn, $schedule_query);
+mysqli_stmt_bind_param($stmt, "is", $consultant_id, $selected_day);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+
+$schedule_slots = array();
+
+while ($row = mysqli_fetch_assoc($result)) {
+    $key = $row['start_time'] . '-' . $row['end_time'];
+    
+    if (!isset($schedule_slots[$key])) {
+        $schedule_slots[$key] = array(
+            'id' => $row['id'],
+            'start_time' => $row['start_time'],
+            'end_time' => $row['end_time'],
+            'is_available' => $row['is_available'],
+            'consultation_types' => array()
+        );
+    }
+    
+    if ($row['consultation_type']) {
+        $schedule_slots[$key]['consultation_types'][] = $row['consultation_type'];
+    }
 }
+
+mysqli_stmt_close($stmt);
 
 // Get booked appointments for the selected date
 $booked_query = "SELECT * FROM appointments WHERE DATE(appointment_datetime) = ? ORDER BY appointment_datetime";
@@ -90,9 +114,9 @@ $day_availability_result = executeQuery($day_availability_query, [$consultant_id
 $day_availability = mysqli_fetch_assoc($day_availability_result);
 
 // If no day-specific settings exist, use the consultant's global settings
-$video_available = isset($day_availability['video_available']) ? $day_availability['video_available'] : ($consultant['video_consultation_available'] ?? 0);
-$phone_available = isset($day_availability['phone_available']) ? $day_availability['phone_available'] : ($consultant['phone_consultation_available'] ?? 0);
-$in_person_available = isset($day_availability['in_person_available']) ? $day_availability['in_person_available'] : ($consultant['in_person_consultation_available'] ?? 0);
+$video_available = isset($day_availability['video_available']) ? $day_availability['video_available'] : ($consultant['video_consultation_available'] ?? 1);
+$phone_available = isset($day_availability['phone_available']) ? $day_availability['phone_available'] : ($consultant['phone_consultation_available'] ?? 1);
+$in_person_available = isset($day_availability['in_person_available']) ? $day_availability['in_person_available'] : ($consultant['in_person_consultation_available'] ?? 1);
 
 // Handle day-specific consultation type availability update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_consultation_types'])) {
@@ -111,11 +135,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_consultation_t
                         WHERE consultant_id = ? AND day_of_week = ?";
         executeQuery($update_query, [$video_available, $phone_available, $in_person_available, $consultant_id, $selected_day]);
     } else {
-        // Insert new record
+        // Insert new record - use form values if provided, otherwise default to 1 (enabled)
+        $default_video = isset($_POST['video_available']) ? 1 : 1;
+        $default_phone = isset($_POST['phone_available']) ? 1 : 1;
+        $default_in_person = isset($_POST['in_person_available']) ? 1 : 1;
+        
         $insert_query = "INSERT INTO day_consultation_availability 
                         (consultant_id, day_of_week, video_available, phone_available, in_person_available) 
                         VALUES (?, ?, ?, ?, ?)";
-        executeQuery($insert_query, [$consultant_id, $selected_day, $video_available, $phone_available, $in_person_available]);
+        executeQuery($insert_query, [$consultant_id, $selected_day, $default_video, $default_phone, $default_in_person]);
     }
     
     $success_message = 'Consultation types updated successfully for ' . ucfirst($selected_day) . '!';
@@ -391,8 +419,30 @@ $consultation_types = [
                                 ];
                                 
                                 foreach ($all_types as $type => $settings): 
-                                    $slot_key = $slot['start'] . '|' . $slot['end'] . '|' . $type;
+                                    $slot_key = $slot['start'] . '-' . $slot['end'];
+                                    
+                                    // Check if this slot exists in the schedule
                                     $is_scheduled = isset($schedule_slots[$slot_key]);
+                                    
+                                    // Check if this consultation type is active for this slot
+                                    $is_type_active = false;
+                                    if ($is_scheduled) {
+                                        // If the slot exists, check if this consultation type is in its types list
+                                        $is_type_active = in_array($type, $schedule_slots[$slot_key]['consultation_types']);
+                                        
+                                        // If the consultation types array is empty, consider all types active by default
+                                        if (empty($schedule_slots[$slot_key]['consultation_types'])) {
+                                            $is_type_active = true;
+                                        }
+                                    }
+                                    
+                                    // Determine if checkbox should be checked:
+                                    // 1. If consultation type is available for this day
+                                    // 2. Time slot doesn't exist yet - check it by default
+                                    // 3. Time slot exists and type is active for it
+                                    // 4. Only exceptions are explicit OFF settings
+                                    $is_checked = (!$is_scheduled && $settings['available']) || 
+                                                 ($is_scheduled && $is_type_active);
                                     
                                     // Check if this slot is booked
                                     $is_booked = false;
@@ -433,7 +483,7 @@ $consultation_types = [
                                                 data-end="<?php echo $slot['end']; ?>"
                                                 data-type="<?php echo $type; ?>"
                                                 value="<?php echo $slot_key; ?>" 
-                                                <?php echo $is_scheduled ? 'checked' : ''; ?> 
+                                                <?php echo $is_checked ? 'checked' : ''; ?> 
                                                 <?php echo $checkbox_disabled ? 'disabled' : ''; ?>
                                             >
                                             <span class="slider"></span>
@@ -504,6 +554,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update the time slots in real-time
                     updateTimeSlots(consultationType, isChecked);
                     
+                    // If a consultation type is turned OFF, also update all the individual time slot toggles
+                    if (!isChecked) {
+                        updateAllTimeSlotTogglesForType(consultationType, false);
+                    } else {
+                        // If turned ON, enable all time slot toggles for this type
+                        updateAllTimeSlotTogglesForType(consultationType, true);
+                    }
+                    
                     // Provide reload option for complete refresh
                     setTimeout(() => {
                         statusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> Changes saved. <a href="javascript:void(0)" id="reload-page" style="color: #0066cc; text-decoration: underline;">Refresh page</a> if changes are not visible.</div>';
@@ -543,12 +601,42 @@ document.addEventListener('DOMContentLoaded', function() {
     // Track changes to send in batch
     let pendingChanges = [];
     
+    // Keep track of time slots that are created for the first time
+    let newlyCreatedSlots = {};
+    
     timeSlotToggles.forEach(toggle => {
         toggle.addEventListener('change', function() {
             const startTime = this.getAttribute('data-start');
             const endTime = this.getAttribute('data-end');
             const slotType = this.getAttribute('data-type');
             const isChecked = this.checked;
+            const slotKey = `${startTime}-${endTime}`;
+            
+            // Check if this is a new slot being created
+            if (isChecked && !newlyCreatedSlots[slotKey]) {
+                newlyCreatedSlots[slotKey] = true;
+                
+                // When a slot is created, automatically enable all other available consultation types
+                const timeSlotCard = this.closest('.time-slot-card');
+                if (timeSlotCard) {
+                    const otherTypes = timeSlotCard.querySelectorAll('.time-slot-toggle:not([data-type="'+slotType+'"])');
+                    
+                    otherTypes.forEach(otherToggle => {
+                        // Only enable if the consultation type is available for this day and not disabled
+                        if (!otherToggle.disabled) {
+                            otherToggle.checked = true;
+                            
+                            // Also add to pending changes
+                            pendingChanges.push({
+                                start: otherToggle.getAttribute('data-start'),
+                                end: otherToggle.getAttribute('data-end'),
+                                type: otherToggle.getAttribute('data-type'),
+                                checked: true
+                            });
+                        }
+                    });
+                }
+            }
             
             // Add to pending changes
             pendingChanges.push({
@@ -599,8 +687,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Show success message
                         timeSlotStatusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> ' + (data.message || 'Time slots updated') + '</div>';
                         
-                        // Clear pending changes
+                        // Clear pending changes and newly created slots tracking
                         pendingChanges = [];
+                        newlyCreatedSlots = {};
                         
                         // Clear message after 3 seconds
                         setTimeout(() => {
@@ -656,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Query all time slot checkboxes that contain our consultation type
         document.querySelectorAll('.time-slot-card').forEach(card => {
             // Get all checkboxes and their container divs
-            const slots = card.querySelectorAll('input[type="checkbox"][value*="' + slotTypeString + '"]');
+            const slots = card.querySelectorAll(`input[type="checkbox"][data-type="${slotTypeString}"]`);
             
             slots.forEach(checkbox => {
                 const slotContainer = checkbox.closest('div[style*="display: flex"]');
@@ -672,6 +761,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!isAvailable) {
                         // Disable the slot if consultation type is toggled off
                         checkbox.disabled = true;
+                        checkbox.checked = false; // Also uncheck it
                         slotContainer.style.opacity = '0.7';
                         
                         // Add or update the disabled reason text
@@ -700,6 +790,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 2. It's not a past time slot
                         // 3. It's not already booked
                         checkbox.disabled = false;
+                        checkbox.checked = true; // Set to checked by default when enabled
                         slotContainer.style.opacity = '';
                         
                         // Remove the "Disabled for X day" message if it exists
@@ -716,6 +807,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    }
+
+    // Function to update all time slot toggles for a specific consultation type
+    function updateAllTimeSlotTogglesForType(consultationType, isEnabled) {
+        // Map data-type attribute values to their corresponding time slot types
+        const typeMapping = {
+            'video': 'Video Consultation',
+            'phone': 'Phone Consultation',
+            'in_person': 'In-Person Consultation'
+        };
+        
+        const slotTypeString = typeMapping[consultationType];
+        if (!slotTypeString) return;
+        
+        // Find all time slot toggles for this consultation type
+        const toggles = document.querySelectorAll(`.time-slot-toggle[data-type="${slotTypeString}"]`);
+        
+        // Prepare an array to hold all the changes
+        let changes = [];
+        
+        // Update each toggle
+        toggles.forEach(toggle => {
+            // Only proceed if the toggle isn't disabled and its state needs to change
+            if (!toggle.disabled && toggle.checked !== isEnabled) {
+                toggle.checked = isEnabled;
+                
+                // Add this change to our batch
+                changes.push({
+                    start: toggle.getAttribute('data-start'),
+                    end: toggle.getAttribute('data-end'),
+                    type: toggle.getAttribute('data-type'),
+                    checked: isEnabled
+                });
+            }
+        });
+        
+        // If we have changes, send them to the server
+        if (changes.length > 0) {
+            const selectedDay = '<?php echo $selected_day; ?>';
+            const selectedDate = '<?php echo $selected_date; ?>';
+            
+            // Show loading status
+            const timeSlotStatusDiv = document.getElementById('time-slots-status');
+            timeSlotStatusDiv.innerHTML = '<div style="color: #666;"><i class="fas fa-spinner fa-spin"></i> Updating all time slots...</div>';
+            
+            // Create form data for AJAX request
+            const formData = new FormData();
+            formData.append('time_slots_ajax', JSON.stringify(changes));
+            formData.append('selected_day', selectedDay);
+            formData.append('selected_date', selectedDate);
+            
+            // Send AJAX request
+            fetch('ajax-save-timeslots.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    timeSlotStatusDiv.innerHTML = '<div style="color: #4caf50;"><i class="fas fa-check"></i> All time slots updated</div>';
+                    setTimeout(() => {
+                        timeSlotStatusDiv.innerHTML = '';
+                    }, 3000);
+                } else {
+                    timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> ' + (data.error || 'Error updating time slots') + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotStatusDiv.innerHTML = '<div style="color: #f44336;"><i class="fas fa-times"></i> Error updating time slots</div>';
+            });
+        }
     }
 
     // Simple weekly calendar implementation

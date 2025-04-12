@@ -190,30 +190,36 @@ try {
         // Log the operation
         error_log("Processing slot: $start_time-$end_time, Type: $type, Checked: " . ($is_checked ? 'Yes' : 'No'));
         
+        // Check if slot already exists
+        $check_stmt = mysqli_prepare($conn, 
+            "SELECT id FROM availability_schedule 
+            WHERE consultant_id = ? 
+            AND day_of_week = ? 
+            AND start_time = ? 
+            AND end_time = ?"
+        );
+        
+        if (!$check_stmt) {
+            throw new Exception("Prepare check statement failed: " . mysqli_error($conn));
+        }
+        
+        mysqli_stmt_bind_param($check_stmt, "isss", $consultant_id, $selected_day, $start_time, $end_time);
+        mysqli_stmt_execute($check_stmt);
+        mysqli_stmt_store_result($check_stmt);
+        $slot_exists = mysqli_stmt_num_rows($check_stmt) > 0;
+        $slot_id = 0;
+        
+        if ($slot_exists) {
+            // If slot exists, get its ID
+            mysqli_stmt_bind_result($check_stmt, $slot_id);
+            mysqli_stmt_fetch($check_stmt);
+        }
+        mysqli_stmt_close($check_stmt);
+        
         // If checked, insert/ensure the slot exists
         if ($is_checked) {
-            // Use direct mysqli prepared statement for better control
-            // Check if slot already exists
-            $check_stmt = mysqli_prepare($conn, 
-                "SELECT id FROM availability_schedule 
-                WHERE consultant_id = ? 
-                AND day_of_week = ? 
-                AND start_time = ? 
-                AND end_time = ?"
-            );
-            
-            if (!$check_stmt) {
-                throw new Exception("Prepare check statement failed: " . mysqli_error($conn));
-            }
-            
-            mysqli_stmt_bind_param($check_stmt, "isss", $consultant_id, $selected_day, $start_time, $end_time);
-            mysqli_stmt_execute($check_stmt);
-            mysqli_stmt_store_result($check_stmt);
-            $exists = mysqli_stmt_num_rows($check_stmt) > 0;
-            mysqli_stmt_close($check_stmt);
-            
             // If slot doesn't exist, insert it
-            if (!$exists) {
+            if (!$slot_exists) {
                 $insert_stmt = mysqli_prepare($conn, 
                     "INSERT INTO availability_schedule 
                      (consultant_id, day_of_week, start_time, end_time, is_available) 
@@ -229,42 +235,199 @@ try {
                 
                 if (!$success) {
                     error_log("SQL Error in insert: " . mysqli_error($conn));
-                    error_log("Insert Query: INSERT INTO availability_schedule (consultant_id, day_of_week, start_time, end_time, is_available) VALUES (?, ?, ?, ?, 1)");
-                    error_log("Parameters: consultant_id=" . $consultant_id . ", day=" . $selected_day . 
-                              ", start=" . $start_time . ", end=" . $end_time);
                     throw new Exception('Error inserting slot: ' . mysqli_error($conn));
                 }
                 
+                // Get the ID of the newly inserted slot
+                $slot_id = mysqli_insert_id($conn);
                 mysqli_stmt_close($insert_stmt);
-                error_log("Inserted new slot: $start_time-$end_time for $selected_day");
-            } else {
-                error_log("Slot already exists: $start_time-$end_time for $selected_day");
+                error_log("Inserted new time slot: $start_time-$end_time for $selected_day");
+                
+                // When a new slot is created, automatically add all available consultation types
+                // Get all available consultation types for this day
+                $get_available_types = mysqli_prepare($conn, 
+                    "SELECT video_available, phone_available, in_person_available 
+                     FROM day_consultation_availability 
+                     WHERE consultant_id = ? AND day_of_week = ?"
+                );
+                
+                if (!$get_available_types) {
+                    throw new Exception("Prepare get available types statement failed: " . mysqli_error($conn));
+                }
+                
+                mysqli_stmt_bind_param($get_available_types, "is", $consultant_id, $selected_day);
+                mysqli_stmt_execute($get_available_types);
+                $types_result = mysqli_stmt_get_result($get_available_types);
+                
+                // If there are day-specific settings, use them
+                if ($day_settings = mysqli_fetch_assoc($types_result)) {
+                    // Add all available consultation types automatically
+                    $types_to_add = [];
+                    if ($day_settings['video_available'] == 1) $types_to_add[] = 'Video Consultation';
+                    if ($day_settings['phone_available'] == 1) $types_to_add[] = 'Phone Consultation';
+                    if ($day_settings['in_person_available'] == 1) $types_to_add[] = 'In-Person Consultation';
+                } else {
+                    // If no day-specific settings, get the consultant's global settings
+                    $get_consultant_settings = mysqli_prepare($conn, 
+                        "SELECT video_consultation_available, phone_consultation_available, in_person_consultation_available 
+                         FROM consultants 
+                         WHERE id = ?"
+                    );
+                    
+                    if (!$get_consultant_settings) {
+                        throw new Exception("Prepare get consultant settings statement failed: " . mysqli_error($conn));
+                    }
+                    
+                    mysqli_stmt_bind_param($get_consultant_settings, "i", $consultant_id);
+                    mysqli_stmt_execute($get_consultant_settings);
+                    $consultant_result = mysqli_stmt_get_result($get_consultant_settings);
+                    
+                    if ($consultant_settings = mysqli_fetch_assoc($consultant_result)) {
+                        // Use consultant's global settings
+                        $types_to_add = [];
+                        if ($consultant_settings['video_consultation_available'] == 1) $types_to_add[] = 'Video Consultation';
+                        if ($consultant_settings['phone_consultation_available'] == 1) $types_to_add[] = 'Phone Consultation';
+                        if ($consultant_settings['in_person_consultation_available'] == 1) $types_to_add[] = 'In-Person Consultation';
+                    } else {
+                        // Default to adding all types if no settings found
+                        $types_to_add = ['Video Consultation', 'Phone Consultation', 'In-Person Consultation'];
+                    }
+                    
+                    mysqli_stmt_close($get_consultant_settings);
+                }
+                
+                // Add all the consultation types to the slot
+                foreach ($types_to_add as $available_type) {
+                    // Skip the current type as it will be added below
+                    if ($available_type === $type) continue;
+                    
+                    $insert_available_type = mysqli_prepare($conn, 
+                        "INSERT INTO time_slot_consultation_types 
+                         (availability_schedule_id, consultation_type) 
+                         VALUES (?, ?)"
+                    );
+                    
+                    if (!$insert_available_type) {
+                        throw new Exception("Prepare insert available type statement failed: " . mysqli_error($conn));
+                    }
+                    
+                    mysqli_stmt_bind_param($insert_available_type, "is", $slot_id, $available_type);
+                    mysqli_stmt_execute($insert_available_type);
+                    mysqli_stmt_close($insert_available_type);
+                    
+                    error_log("Automatically added consultation type $available_type to new slot: $start_time-$end_time for $selected_day");
+                }
+                
+                mysqli_stmt_close($get_available_types);
             }
-        } 
-        // If unchecked, remove the slot if it exists
-        else {
-            $delete_stmt = mysqli_prepare($conn, 
-                "DELETE FROM availability_schedule 
-                WHERE consultant_id = ? 
-                AND day_of_week = ? 
-                AND start_time = ? 
-                AND end_time = ?"
+            
+            // Now check if the consultation type is already assigned to this slot
+            $check_type_stmt = mysqli_prepare($conn, 
+                "SELECT id FROM time_slot_consultation_types 
+                WHERE availability_schedule_id = ? 
+                AND consultation_type = ?"
             );
             
-            if (!$delete_stmt) {
-                throw new Exception("Prepare delete statement failed: " . mysqli_error($conn));
+            if (!$check_type_stmt) {
+                throw new Exception("Prepare check type statement failed: " . mysqli_error($conn));
             }
             
-            mysqli_stmt_bind_param($delete_stmt, "isss", $consultant_id, $selected_day, $start_time, $end_time);
-            $success = mysqli_stmt_execute($delete_stmt);
+            mysqli_stmt_bind_param($check_type_stmt, "is", $slot_id, $type);
+            mysqli_stmt_execute($check_type_stmt);
+            mysqli_stmt_store_result($check_type_stmt);
+            $type_exists = mysqli_stmt_num_rows($check_type_stmt) > 0;
+            mysqli_stmt_close($check_type_stmt);
             
-            if (!$success) {
-                error_log("SQL Error in delete: " . mysqli_error($conn));
-                throw new Exception('Error deleting slot: ' . mysqli_error($conn));
+            // If consultation type not assigned to this slot, add it
+            if (!$type_exists) {
+                $insert_type_stmt = mysqli_prepare($conn, 
+                    "INSERT INTO time_slot_consultation_types 
+                     (availability_schedule_id, consultation_type) 
+                     VALUES (?, ?)"
+                );
+                
+                if (!$insert_type_stmt) {
+                    throw new Exception("Prepare insert type statement failed: " . mysqli_error($conn));
+                }
+                
+                mysqli_stmt_bind_param($insert_type_stmt, "is", $slot_id, $type);
+                $success = mysqli_stmt_execute($insert_type_stmt);
+                
+                if (!$success) {
+                    error_log("SQL Error in insert type: " . mysqli_error($conn));
+                    throw new Exception('Error inserting consultation type: ' . mysqli_error($conn));
+                }
+                
+                mysqli_stmt_close($insert_type_stmt);
+                error_log("Added consultation type $type to slot: $start_time-$end_time for $selected_day");
+            } else {
+                error_log("Consultation type $type already exists for slot: $start_time-$end_time for $selected_day");
             }
-            
-            mysqli_stmt_close($delete_stmt);
-            error_log("Deleted slot: $start_time-$end_time for $selected_day");
+        } 
+        // If unchecked, remove the consultation type from the slot
+        else {
+            if ($slot_exists) {
+                // Delete the consultation type for this slot
+                $delete_type_stmt = mysqli_prepare($conn, 
+                    "DELETE FROM time_slot_consultation_types 
+                    WHERE availability_schedule_id = ? 
+                    AND consultation_type = ?"
+                );
+                
+                if (!$delete_type_stmt) {
+                    throw new Exception("Prepare delete type statement failed: " . mysqli_error($conn));
+                }
+                
+                mysqli_stmt_bind_param($delete_type_stmt, "is", $slot_id, $type);
+                $success = mysqli_stmt_execute($delete_type_stmt);
+                
+                if (!$success) {
+                    error_log("SQL Error in delete type: " . mysqli_error($conn));
+                    throw new Exception('Error deleting consultation type: ' . mysqli_error($conn));
+                }
+                
+                mysqli_stmt_close($delete_type_stmt);
+                error_log("Removed consultation type $type from slot: $start_time-$end_time for $selected_day");
+                
+                // Check if there are any consultation types left for this slot
+                $check_types_left_stmt = mysqli_prepare($conn, 
+                    "SELECT COUNT(*) FROM time_slot_consultation_types 
+                    WHERE availability_schedule_id = ?"
+                );
+                
+                if (!$check_types_left_stmt) {
+                    throw new Exception("Prepare check types left statement failed: " . mysqli_error($conn));
+                }
+                
+                mysqli_stmt_bind_param($check_types_left_stmt, "i", $slot_id);
+                mysqli_stmt_execute($check_types_left_stmt);
+                mysqli_stmt_bind_result($check_types_left_stmt, $types_count);
+                mysqli_stmt_fetch($check_types_left_stmt);
+                mysqli_stmt_close($check_types_left_stmt);
+                
+                // If no consultation types left, delete the entire slot
+                if ($types_count == 0) {
+                    $delete_slot_stmt = mysqli_prepare($conn, 
+                        "DELETE FROM availability_schedule 
+                        WHERE id = ?"
+                    );
+                    
+                    if (!$delete_slot_stmt) {
+                        throw new Exception("Prepare delete slot statement failed: " . mysqli_error($conn));
+                    }
+                    
+                    mysqli_stmt_bind_param($delete_slot_stmt, "i", $slot_id);
+                    $success = mysqli_stmt_execute($delete_slot_stmt);
+                    
+                    if (!$success) {
+                        error_log("SQL Error in delete slot: " . mysqli_error($conn));
+                        throw new Exception('Error deleting slot: ' . mysqli_error($conn));
+                    }
+                    
+                    mysqli_stmt_close($delete_slot_stmt);
+                    error_log("Deleted time slot: $start_time-$end_time for $selected_day (no consultation types left)");
+                }
+            }
         }
     }
     
